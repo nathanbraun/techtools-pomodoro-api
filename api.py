@@ -3,37 +3,48 @@ from sqlalchemy import func
 from ariadne.asgi import GraphQL
 from starlette.middleware.cors import CORSMiddleware
 import datetime as dt
-from sqlalchemy import create_engine, Column, Integer, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 
-Base = declarative_base()
+ModelBase = declarative_base()
 
-class Project(Base):
+class Project(ModelBase):
     __tablename__ = 'project'
 
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
 
-class Pomodoro(Base):
+    pomodoros = relationship("Pomodoro", back_populates="project")
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class Pomodoro(ModelBase):
     __tablename__ = 'pomodoro'
 
     id = Column(Integer, primary_key=True)
     description_id = Column(Integer, ForeignKey('project.id'))
     duration = Column(Integer)
-    start = Column(DateTime, default=dt.datetime.utcnow)
+    start = Column(Integer, default=lambda: dt.datetime.utcnow().timestamp())
 
     # Establish the relationship to project
-    project = relationship("Project")
+    project = relationship("Project", back_populates="pomodoros")
+
+    def __str__(self):
+        return f"{self.id}"
 
 
 type_defs = gql(
     """
     type Query {
         pomodoro(id : Int!): Pomodoro
-        project(project: String!, start_time: String, end_time: String): Project
-        work(start_time: String, end_time: String): [Project!]!
+        project(project: String!, start_time: Int, end_time: Int): Project!
+        work(start_time: Int, end_time: Int): [Project!]!
+        projects(start_time: Int, end_time: Int): [Project!]!
     }
 
     type Mutation {
@@ -43,6 +54,7 @@ type_defs = gql(
     type Pomodoro {
         id: Int!
         duration: Int!
+        start: Int!
     }
 
     type Project {
@@ -50,25 +62,53 @@ type_defs = gql(
         name: String!
         total_duration: Int!
         n_pomodoros: Int!
+        pomodoros: [Pomodoro!]!
+        as_of: String!
+        last_touched: String!
     }
 
     """)
 
-engine = create_engine('sqlite:///pomodoro.db')
+# note: need to have SSH tunnel fowarding 5432 from server to localhost
+# for this to work
+engine = create_engine('postgresql://pomo:pomo@localhost:5432/pomo')
 
-Base.metadata.create_all(engine)
+ModelBase.metadata.create_all(engine)
 
 Session = sessionmaker(bind=engine)
-
-session = Session()
 
 query = ObjectType("Query")
 mutation = ObjectType("Mutation")
 pomodoro = ObjectType("Pomodoro")
 project = ObjectType("Project")
 
+@query.field("pomodoro")
+def resolve_pomodoro(obj, info, id):
+
+    session = Session()
+
+    # if id is a Pomodoro
+    if id.__class__ == Pomodoro:
+        pomo_obj = id
+    else:
+        pomo_obj = session.query(Pomodoro).filter_by(id=id).first()
+
+    if not pomo_obj:
+        return None
+
+    return {'id': pomo_obj.id, 'duration': pomo_obj.duration, 'start':
+            pomo_obj.start}
+
 @mutation.field("pomodoro")
-def resolve_pomodoro(obj, info, duration, project):
+def mutate_pomodoro(obj, info, duration, project):
+
+    session = Session()
+
+    # standardize project name
+    project = (project
+               .lower()
+               .replace(" ", "_")
+               .replace(".", "-"))
 
     # look up project by name, create if doesn't exist
     project_obj = session.query(Project).filter_by(name=project).first()
@@ -76,20 +116,44 @@ def resolve_pomodoro(obj, info, duration, project):
     if not project_obj:
         project_obj = Project(name=project)
 
-    start = dt.datetime.utcnow() - dt.timedelta(seconds=duration)
-    pomo = Pomodoro(duration=duration, start=start)
+    start_timestamp = int((dt.datetime.utcnow() -
+        dt.timedelta(seconds=duration)).timestamp())
+    pomo = Pomodoro(duration=duration, start=start_timestamp)
     pomo.project = project_obj
 
-    session.add(pomo)
-    session.commit()
-    return {'id': pomo.id, 'duration': pomo.duration}
+    try:
+        session.add(pomo)
+        session.commit()
+        session.refresh(pomo)
+        pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start': pomo.start}
+    except Exception as e:
+        session.rollback()  # Rollback the transaction in case of an exception
+        raise e
+    finally:
+        session.close()  # Close the session to cleanup the resources
+
+    return pomo_details
+
+@query.field("projects")
+def resolve_projects(obj, info, start_time=None, end_time=None):
+    """
+    Return list of projects
+    """
+    session = Session()
+    return [resolve_project(obj, info, x, start_time, end_time) for x in
+        session.query(Project).all()]
 
 @query.field("project")
 def resolve_project(obj, info, project, start_time=None, end_time=None):
 
     # look up project by name, create if doesn't exist
+    session = Session()
 
-    project_obj = session.query(Project).filter_by(name=project).first()
+    # if project is a Project
+    if project.__class__ == Project:
+        project_obj = project
+    else:
+        project_obj = session.query(Project).filter_by(name=project).first()
 
     if not project_obj:
         return None
@@ -98,12 +162,10 @@ def resolve_project(obj, info, project, start_time=None, end_time=None):
 
     # If start_time is provided, parse it and add to conditions
     if start_time:
-        start_time = dt.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%S')
         conditions.append(Pomodoro.start >= start_time)
 
     # If end_time is provided, parse it and add to conditions
     if end_time:
-        end_time = dt.datetime.strptime(end_time, '%Y-%m-%dT%H:%M:%S')
         conditions.append(Pomodoro.start <= end_time)
 
     # Calculate total duration and count of pomodoros directly in the database
@@ -111,19 +173,22 @@ def resolve_project(obj, info, project, start_time=None, end_time=None):
         func.sum(Pomodoro.duration), func.count(Pomodoro.id)
     ).filter(*conditions).first()
 
+    pomodoros = [resolve_pomodoro(obj, info, x) for x in project_obj.pomodoros][::-1]
+
     return {'id': project_obj.id, 'name': project_obj.name, 'total_duration':
-            total_duration or 0, 'n_pomodoros': npomo}
+            total_duration or 0, 'n_pomodoros': npomo, 'pomodoros':
+            pomodoros, 'as_of': str(int(time.time()*1000)), 'last_touched': str(pomodoros[0]['start']*1000)}
 
 @query.field("work")
 def resolve_work(obj, info, start_time=None, end_time=None):
+    session = Session()
+
     # Parse the start and end times if provided
     conditions = []
     if start_time:
-        start_time_dt = dt.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%S')
-        conditions.append(Pomodoro.start >= start_time_dt)
+        conditions.append(Pomodoro.start >= start_time)
     if end_time:
-        end_time_dt = dt.datetime.strptime(end_time, '%Y-%m-%dT%H:%M:%S')
-        conditions.append(Pomodoro.start <= end_time_dt)
+        conditions.append(Pomodoro.start <= end_time)
 
     # Query the Pomodoro table to find all pomodoros within the time range
     # and get the distinct associated projects
@@ -136,11 +201,13 @@ def resolve_work(obj, info, start_time=None, end_time=None):
 
     # Use resolve_project to get details for each project
     work_data = [
-        resolve_project(obj, info, project=project.name, start_time=start_time, end_time=end_time)
+        resolve_project(obj, info, project=project.name, start_time=start_time,
+                        end_time=end_time)
         for project in projects_within_time_range
     ]
 
     return work_data
+
 
 schema = make_executable_schema(type_defs, query, mutation, pomodoro, project)
 
