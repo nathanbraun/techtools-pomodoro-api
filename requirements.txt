@@ -1,6 +1,6 @@
 ariadne==0.21
 gunicorn==21.2.0
 ipython==8.17.2
-psycopg2==2.9.9
+psycopg2-binary
 SQLAlchemy==2.0.23
 starlette==0.32.0.post1
