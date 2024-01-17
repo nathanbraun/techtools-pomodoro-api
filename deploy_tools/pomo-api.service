@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve graphql
+After=network.target
+
+[Service]
+User=nbraun
+Group=www-data
+WorkingDirectory=/home/nbraun/code/github.com/nathanbraun/techtools-pomodoro-api
+Environment="PATH=/home/nbraun/code/github.com/nathanbraun/techtools-pomodoro-api/venv/bin"
+ExecStart=/home/nbraun/code/github.com/nathanbraun/techtools-pomodoro-api/venv/bin/gunicorn --workers 3 -k uvicorn.workers.UvicornWorker --bind unix:gunicorn.sock -m 007 api:app
+
+[Install]
+WantedBy=multi-user.target
