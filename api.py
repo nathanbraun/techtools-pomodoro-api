@@ -69,8 +69,6 @@ type_defs = gql(
 
     """)
 
-# note: need to have SSH tunnel fowarding 5432 from server to localhost
-# for this to work
 engine = create_engine('postgresql://pomo:pomo@localhost:5432/pomo')
 
 ModelBase.metadata.create_all(engine)
