@@ -3,7 +3,7 @@ from sqlalchemy import func
 from ariadne.asgi import GraphQL
 from starlette.middleware.cors import CORSMiddleware
 import datetime as dt
-from sqlalchemy import Column, Integer, ForeignKey, Text
+from sqlalchemy import Column, Integer, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -31,6 +31,7 @@ class Pomodoro(ModelBase):
     description_id = Column(Integer, ForeignKey('project.id'))
     duration = Column(Integer)
     start = Column(Integer, default=lambda: dt.datetime.utcnow().timestamp())
+    test = Column(Boolean)
 
     # Establish the relationship to project
     project = relationship("Project", back_populates="pomodoros")
@@ -49,13 +50,14 @@ type_defs = gql(
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!): Pomodoro!
+        pomodoro (duration: Int!, project: String!, test: Boolean!): Pomodoro!
     }
 
     type Pomodoro {
         id: Int!
         duration: Int!
         start: Int!
+        test: Boolean!
     }
 
     type Project {
@@ -97,10 +99,10 @@ def resolve_pomodoro(obj, info, id):
         return None
 
     return {'id': pomo_obj.id, 'duration': pomo_obj.duration, 'start':
-            pomo_obj.start}
+            pomo_obj.start, 'test': pomo_obj.test}
 
 @mutation.field("pomodoro")
-def mutate_pomodoro(obj, info, duration, project):
+def mutate_pomodoro(obj, info, duration, project, test):
 
     session = Session()
 
@@ -118,14 +120,15 @@ def mutate_pomodoro(obj, info, duration, project):
 
     start_timestamp = int((dt.datetime.utcnow() -
         dt.timedelta(seconds=duration)).timestamp())
-    pomo = Pomodoro(duration=duration, start=start_timestamp)
+    pomo = Pomodoro(duration=duration, start=start_timestamp, test=test)
     pomo.project = project_obj
 
     try:
         session.add(pomo)
         session.commit()
         session.refresh(pomo)
-        pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start': pomo.start}
+        pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start':
+                        pomo.start, 'test': pomo.test}
 
         project_obj.last_touched = pomo.start
         session.commit()
