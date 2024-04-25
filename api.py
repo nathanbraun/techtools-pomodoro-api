@@ -50,7 +50,7 @@ type_defs = gql(
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!, test: Boolean!, start): Pomodoro!
+        pomodoro (duration: Int!, project: String!, test: Boolean!, start: Int): Pomodoro!
     }
 
     type Pomodoro {
