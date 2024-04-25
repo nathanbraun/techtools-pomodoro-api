@@ -5,3 +5,6 @@ psycopg2-binary
 SQLAlchemy==2.0.23
 starlette==0.32.0.post1
 uvicorn==0.24.0.post1
+requests==2.31.0
+humanfriendly==10.0
+tzlocal==5.2

@@ -50,7 +50,7 @@ type_defs = gql(
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!, test: Boolean!): Pomodoro!
+        pomodoro (duration: Int!, project: String!, test: Boolean!, start): Pomodoro!
     }
 
     type Pomodoro {
@@ -102,7 +102,7 @@ def resolve_pomodoro(obj, info, id):
             pomo_obj.start, 'test': pomo_obj.test}
 
 @mutation.field("pomodoro")
-def mutate_pomodoro(obj, info, duration, project, test):
+def mutate_pomodoro(obj, info, duration, project, test, start=None):
 
     session = Session()
 
@@ -118,8 +118,12 @@ def mutate_pomodoro(obj, info, duration, project, test):
     if not project_obj:
         project_obj = Project(name=project)
 
-    start_timestamp = int((dt.datetime.utcnow() -
-        dt.timedelta(seconds=duration)).timestamp())
+    if start is None:
+        start_timestamp = int((dt.datetime.utcnow() -
+            dt.timedelta(seconds=duration)).timestamp())
+    else:
+        start_timestamp = start
+
     pomo = Pomodoro(duration=duration, start=start_timestamp, test=test)
     pomo.project = project_obj
 
