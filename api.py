@@ -18,6 +18,7 @@ class Project(ModelBase):
     name = Column(Text, unique=True)
 
     pomodoros = relationship("Pomodoro", back_populates="project")
+    last_touched = Column(Integer, default=lambda: dt.datetime.utcnow().timestamp())
 
     def __str__(self):
         return f"{self.name}"
@@ -64,10 +65,11 @@ type_defs = gql(
         n_pomodoros: Int!
         pomodoros: [Pomodoro!]!
         as_of: String!
-        last_touched: String!
+        last_touched: Int!
     }
 
     """)
+
 
 engine = create_engine('postgresql://pomo:pomo@localhost:5432/pomo')
 
@@ -124,6 +126,10 @@ def mutate_pomodoro(obj, info, duration, project):
         session.commit()
         session.refresh(pomo)
         pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start': pomo.start}
+
+        project_obj.last_touched = pomo.start
+        session.commit()
+
     except Exception as e:
         session.rollback()  # Rollback the transaction in case of an exception
         raise e
