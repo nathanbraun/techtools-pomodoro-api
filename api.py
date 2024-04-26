@@ -189,7 +189,8 @@ def resolve_project(obj, info, project, start_time=None, end_time=None):
 
     return {'id': project_obj.id, 'name': project_obj.name, 'total_duration':
             total_duration or 0, 'n_pomodoros': npomo, 'pomodoros':
-            pomodoros, 'as_of': str(int(time.time()*1000)), 'last_touched': pomodoros[0]['start']*1000}
+            pomodoros, 'as_of': str(int(time.time()*1000)), 'last_touched':
+            project_obj.last_touched}
 
 @query.field("work")
 def resolve_work(obj, info, start_time=None, end_time=None):
