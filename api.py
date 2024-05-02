@@ -51,7 +51,7 @@ type_defs = gql(
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!, test: Boolean!, start: Int): Pomodoro!
+        pomodoro (duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
     }
 
     type Pomodoro {
@@ -103,7 +103,7 @@ def resolve_pomodoro(obj, info, id):
             pomo_obj.start, 'test': pomo_obj.test}
 
 @mutation.field("pomodoro")
-def mutate_pomodoro(obj, info, duration, project, test, start=None):
+def mutate_pomodoro(obj, info, duration, project, test=False, start=None):
 
     session = Session()
 
