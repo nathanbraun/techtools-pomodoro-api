@@ -189,7 +189,7 @@ def resolve_project(obj, info, project, start_time=None, end_time=None):
         func.sum(Pomodoro.duration), func.count(Pomodoro.id)
     ).filter(*conditions).first()
 
-    pomodoros = [resolve_pomodoro(obj, info, x) for x in project_obj.pomodoros][::-1]
+    pomodoros = [resolve_pomodoro(obj, info, x) for x in project_obj.pomodoros]
 
     return {'id': project_obj.id, 'name': project_obj.name, 'total_duration':
             total_duration or 0, 'n_pomodoros': npomo, 'pomodoros':
