@@ -9,6 +9,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import time
+from dotenv import load_dotenv
+import os
+
+# load_dotenv()
+
+# LICENSE_KEY = os.environ.get('LICENSE_KEY')
 
 ModelBase = declarative_base()
 
@@ -48,14 +54,29 @@ class Pomodoro(ModelBase):
 type_defs = gql(
     """
     type Query {
-        pomodoro(id : Int!): Pomodoro
-        project(project: String!, start_time: Int, end_time: Int): Project!
-        work(start_time: Int, end_time: Int): [Project!]!
-        projects(start_time: Int, end_time: Int): [Project!]!
+        pomodoro(key: String!, id : Int!): PomodoroResult!
+        project(key: String!, project: String!, start_time: Int, end_time: Int): ProjectsResult!
+        work(key: String!, start_time: Int, end_time: Int): ProjectsResult!
+        projects(key: String!, start_time: Int, end_time: Int): ProjectsResult!
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
+        pomodoro (key: String!, duration: Int!, project: String!, test: Boolean, start: Int): PomodoroResult!
+    }
+
+    type PomodoroResult {
+        error: String
+        pomdoro: Pomodoro
+    }
+
+    type ProjectResult {
+        error: String
+        project: Project
+    }
+
+    type ProjectsResult {
+        error: String
+        project: [Project!]
     }
 
     type Pomodoro {
@@ -88,9 +109,12 @@ query = ObjectType("Query")
 mutation = ObjectType("Mutation")
 pomodoro = ObjectType("Pomodoro")
 project = ObjectType("Project")
+pomodoro_result = ObjectType("PomodoroResult")
+project_result = ObjectType("ProjectResult")
+projects_result = ObjectType("ProjectsResult")
 
 @query.field("pomodoro")
-def resolve_pomodoro(obj, info, id):
+def resolve_pomodoro(obj, info, key, id):
 
     session = Session()
 
@@ -107,7 +131,7 @@ def resolve_pomodoro(obj, info, id):
             pomo_obj.start, 'test': pomo_obj.test}
 
 @mutation.field("pomodoro")
-def mutate_pomodoro(obj, info, duration, project, test=False, start=None):
+def mutate_pomodoro(obj, info, key, duration, project, test=False, start=None):
 
     session = Session()
 
@@ -151,16 +175,16 @@ def mutate_pomodoro(obj, info, duration, project, test=False, start=None):
     return pomo_details
 
 @query.field("projects")
-def resolve_projects(obj, info, start_time=None, end_time=None):
+def resolve_projects(obj, info, key, start_time=None, end_time=None):
     """
     Return list of projects
     """
     session = Session()
-    return [resolve_project(obj, info, x, start_time, end_time) for x in
-        session.query(Project).all()]
+    return {'projects': [resolve_project(obj, info, x, start_time, end_time) for x in
+        session.query(Project).all()]}
 
 @query.field("project")
-def resolve_project(obj, info, project, start_time=None, end_time=None):
+def resolve_project(obj, info, key, project, start_time=None, end_time=None):
 
     # look up project by name, create if doesn't exist
     session = Session()
@@ -197,7 +221,7 @@ def resolve_project(obj, info, project, start_time=None, end_time=None):
             project_obj.last_touched}
 
 @query.field("work")
-def resolve_work(obj, info, start_time=None, end_time=None):
+def resolve_work(obj, info, key, start_time=None, end_time=None):
     session = Session()
 
     # Parse the start and end times if provided
@@ -226,7 +250,8 @@ def resolve_work(obj, info, start_time=None, end_time=None):
     return work_data
 
 
-schema = make_executable_schema(type_defs, query, mutation, pomodoro, project)
+schema = make_executable_schema(type_defs, query, mutation, pomodoro, project,
+                                project_result, pomodoro_result, projects_result)
 
 app = CORSMiddleware(GraphQL(schema, debug=True), allow_origins=['*'],
                      allow_methods=['*'], allow_headers=['*'])
