@@ -3,7 +3,7 @@ from sqlalchemy import func
 from ariadne.asgi import GraphQL
 from starlette.middleware.cors import CORSMiddleware
 import datetime as dt
-from sqlalchemy import Column, Integer, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, Text, Boolean, desc
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +18,11 @@ class Project(ModelBase):
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
 
-    pomodoros = relationship("Pomodoro", back_populates="project")
+    pomodoros = relationship(
+        "Pomodoro",
+        back_populates="project",
+        order_by=lambda: desc(Pomodoro.start)
+    )
     last_touched = Column(Integer, default=lambda: dt.datetime.utcnow().timestamp())
 
     def __str__(self):
