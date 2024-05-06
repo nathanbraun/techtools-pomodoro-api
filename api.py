@@ -48,6 +48,7 @@ class Pomodoro(ModelBase):
 type_defs = gql(
     """
     type Query {
+        health(key: String!): Status!
         pomodoro(id : Int!): Pomodoro
         project(project: String!, start_time: Int, end_time: Int): Project!
         work(start_time: Int, end_time: Int): [Project!]!
@@ -56,6 +57,11 @@ type_defs = gql(
 
     type Mutation {
         pomodoro (duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
+    }
+
+    type Status {
+        authorized: Boolean!
+        any_pomos: Boolean!
     }
 
     type Pomodoro {
@@ -88,6 +94,11 @@ query = ObjectType("Query")
 mutation = ObjectType("Mutation")
 pomodoro = ObjectType("Pomodoro")
 project = ObjectType("Project")
+status = ObjectType("Status")
+
+@query.field("status")
+def resolve_status(obj, info, key):
+    return {'authorized': True, 'any_pomos': True}
 
 @query.field("pomodoro")
 def resolve_pomodoro(obj, info, id):
