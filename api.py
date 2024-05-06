@@ -96,8 +96,8 @@ pomodoro = ObjectType("Pomodoro")
 project = ObjectType("Project")
 status = ObjectType("Status")
 
-@query.field("status")
-def resolve_status(obj, info, key):
+@query.field("health")
+def resolve_health(obj, info, key):
     return {'authorized': True, 'any_pomos': True}
 
 @query.field("pomodoro")
