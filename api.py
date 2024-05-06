@@ -48,7 +48,7 @@ class Pomodoro(ModelBase):
 type_defs = gql(
     """
     type Query {
-        health(key: String!): Status!
+        health(key: String!): Health!
         pomodoro(id : Int!): Pomodoro
         project(project: String!, start_time: Int, end_time: Int): Project!
         work(start_time: Int, end_time: Int): [Project!]!
@@ -59,7 +59,7 @@ type_defs = gql(
         pomodoro (duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
     }
 
-    type Status {
+    type Health {
         authorized: Boolean!
         any_pomos: Boolean!
     }
@@ -94,7 +94,7 @@ query = ObjectType("Query")
 mutation = ObjectType("Mutation")
 pomodoro = ObjectType("Pomodoro")
 project = ObjectType("Project")
-status = ObjectType("Status")
+health = ObjectType("Health")
 
 @query.field("health")
 def resolve_health(obj, info, key):
