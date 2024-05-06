@@ -8,4 +8,3 @@ uvicorn==0.24.0.post1
 requests==2.31.0
 humanfriendly==10.0
 tzlocal==5.2
-python-dotenv==1.0.1
