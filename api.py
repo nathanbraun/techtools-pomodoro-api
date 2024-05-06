@@ -55,7 +55,7 @@ type_defs = gql(
     """
     type Query {
         pomodoro(key: String!, id : Int!): PomodoroResult!
-        project(key: String!, project: String!, start_time: Int, end_time: Int): ProjectsResult!
+        project(key: String!, project: String!, start_time: Int, end_time: Int): ProjectResult!
         work(key: String!, start_time: Int, end_time: Int): ProjectsResult!
         projects(key: String!, start_time: Int, end_time: Int): ProjectsResult!
     }
@@ -127,8 +127,8 @@ def resolve_pomodoro(obj, info, key, id):
     if not pomo_obj:
         return None
 
-    return {'id': pomo_obj.id, 'duration': pomo_obj.duration, 'start':
-            pomo_obj.start, 'test': pomo_obj.test}
+    return {'pomodoro': {'id': pomo_obj.id, 'duration': pomo_obj.duration,
+                         'start': pomo_obj.start, 'test': pomo_obj.test}}
 
 @mutation.field("pomodoro")
 def mutate_pomodoro(obj, info, key, duration, project, test=False, start=None):
@@ -180,21 +180,28 @@ def resolve_projects(obj, info, key, start_time=None, end_time=None):
     Return list of projects
     """
     session = Session()
-    return {'projects': [resolve_project(obj, info, x, start_time, end_time) for x in
-        session.query(Project).all()]}
+    projects = [resolve_project(obj, info, key, x, start_time,
+                                end_time)['project'] for x in
+        session.query(Project).all()]
+    print(projects)
+
+    return {'projects': projects, 'error': 'none'}
 
 @query.field("project")
 def resolve_project(obj, info, key, project, start_time=None, end_time=None):
+    print(key)
 
     # look up project by name, create if doesn't exist
     session = Session()
 
+    print(project)
     # if project is a Project
     if project.__class__ == Project:
         project_obj = project
     else:
         project_obj = session.query(Project).filter_by(name=project).first()
 
+    print(project_obj)
     if not project_obj:
         return None
 
@@ -213,12 +220,12 @@ def resolve_project(obj, info, key, project, start_time=None, end_time=None):
         func.sum(Pomodoro.duration), func.count(Pomodoro.id)
     ).filter(*conditions).first()
 
-    pomodoros = [resolve_pomodoro(obj, info, x) for x in project_obj.pomodoros]
+    pomodoros = [resolve_pomodoro(obj, info, key, x)['pomodoro'] for x in project_obj.pomodoros]
 
-    return {'id': project_obj.id, 'name': project_obj.name, 'total_duration':
+    return {'project': {'id': project_obj.id, 'name': project_obj.name, 'total_duration':
             total_duration or 0, 'n_pomodoros': npomo, 'pomodoros':
             pomodoros, 'as_of': str(int(time.time()*1000)), 'last_touched':
-            project_obj.last_touched}
+            project_obj.last_touched}}
 
 @query.field("work")
 def resolve_work(obj, info, key, start_time=None, end_time=None):
@@ -242,8 +249,8 @@ def resolve_work(obj, info, key, start_time=None, end_time=None):
 
     # Use resolve_project to get details for each project
     work_data = [
-        resolve_project(obj, info, project=project.name, start_time=start_time,
-                        end_time=end_time)
+        resolve_project(obj, info, key, project=project.name,
+                        start_time=start_time, end_time=end_time)['project']
         for project in projects_within_time_range
     ]
 
