@@ -10,6 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import time
 
+LICENSE_KEY = 'XXX'
+
 ModelBase = declarative_base()
 
 class Project(ModelBase):
@@ -98,7 +100,10 @@ health = ObjectType("Health")
 
 @query.field("health")
 def resolve_health(obj, info, key):
-    return {'authorized': True, 'any_pomos': True}
+    session = Session()
+    any_pomo_exists = session.query(Pomodoro).limit(1).scalar() is not None
+    session.close()
+    return {'authorized': key == LICENSE_KEY, 'any_pomos': any_pomo_exists}
 
 @query.field("pomodoro")
 def resolve_pomodoro(obj, info, id):
