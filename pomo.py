@@ -6,6 +6,12 @@ from textwrap import dedent
 import humanfriendly
 from tzlocal import get_localzone
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+LICENSE_KEY = os.environ.get('LICENSE_KEY')
+API_URL = os.environ.get('API_URL')
 
 parser = argparse.ArgumentParser(
   description="Run a pomodoro.")
@@ -38,8 +44,6 @@ dur_sec = round(humanfriendly.parse_timespan(dur))
 
 if desc is None:
     desc = os.getcwd().split('/')[-1]
-
-API_URL = 'https://api.pomodoro.ing'
 
 if args['test'] is not None:
     if args['test'] == 'default_test':

@@ -9,8 +9,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import time
+from dotenv import load_dotenv
+import os
 
-LICENSE_KEY = 'XXX'
+load_dotenv()
+
+LICENSE_KEY = os.environ.get('LICENSE_KEY')
 
 ModelBase = declarative_base()
 
