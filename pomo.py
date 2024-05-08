@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LICENSE_KEY = os.environ.get('LICENSE_KEY', 'TECHTOOLS1')
+PASSKEY = os.environ.get('PASSKEY', 'TECHTOOLS1')
 API_URL = os.environ.get('API_URL')
 
 parser = argparse.ArgumentParser(
@@ -51,7 +51,7 @@ if args['test'] is not None:
         mutation = dedent(
             f"""
             mutation {{
-                pomodoro (key: "{LICENSE_KEY}", duration: {dur_sec}, project: "{desc}", test: true) {{
+                pomodoro (key: "{PASSKEY}", duration: {dur_sec}, project: "{desc}", test: true) {{
                     id,
                     duration
                 }}
@@ -74,7 +74,7 @@ if args['test'] is not None:
             mutation = dedent(
                 f"""
                 mutation {{
-                    pomodoro (key: "{LICENSE_KEY}", duration: {dur_sec}, project: "{desc}", start: {posix_timestamp}, test: true) {{
+                    pomodoro (key: "{PASSKEY}", duration: {dur_sec}, project: "{desc}", start: {posix_timestamp}, test: true) {{
                         id,
                         duration
                     }}
@@ -101,7 +101,7 @@ else:
         mutation = dedent(
             f"""
             mutation {{
-                pomodoro (key: "{LICENSE_KEY}", duration: {dur_sec}, project: "{desc}") {{
+                pomodoro (key: "{PASSKEY}", duration: {dur_sec}, project: "{desc}") {{
                     id,
                     duration
                 }}

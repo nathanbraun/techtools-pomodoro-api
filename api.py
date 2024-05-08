@@ -14,7 +14,7 @@ import os
 
 load_dotenv()
 
-LICENSE_KEY = os.environ.get('LICENSE_KEY', 'TECHTOOLS1')
+PASSKEY = os.environ.get('PASSKEY', 'TECHTOOLS1')
 
 ModelBase = declarative_base()
 
@@ -107,7 +107,7 @@ def resolve_health(obj, info, key):
     session = Session()
     any_pomo_exists = session.query(Pomodoro).limit(1).scalar() is not None
     session.close()
-    return {'authorized': key == LICENSE_KEY, 'any_pomos': any_pomo_exists}
+    return {'authorized': key == PASSKEY, 'any_pomos': any_pomo_exists}
 
 @query.field("pomodoro")
 def resolve_pomodoro(obj, info, id):
@@ -129,7 +129,7 @@ def resolve_pomodoro(obj, info, id):
 @mutation.field("pomodoro")
 def mutate_pomodoro(obj, info, key, duration, project, test=False, start=None):
 
-    if key == LICENSE_KEY:
+    if key == PASSKEY:
         session = Session()
 
         # standardize project name
