@@ -14,7 +14,7 @@ import os
 
 load_dotenv()
 
-LICENSE_KEY = os.environ.get('LICENSE_KEY')
+LICENSE_KEY = os.environ.get('LICENSE_KEY', 'TECHTOOLS1')
 
 ModelBase = declarative_base()
 
