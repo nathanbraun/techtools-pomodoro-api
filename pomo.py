@@ -88,7 +88,9 @@ else:
     # duration in seconds
 
     # run actual pomodoro
-    pomo = os.system(f'noti pomodoro --simple {dur}')
+
+    pomo_command = os.path.expanduser("~/go/bin/pomodoro")
+    pomo = os.system(f'noti {pomo_command} --simple {dur}')
     zone = str(get_localzone())
 
     if pomo == 0:
