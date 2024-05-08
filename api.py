@@ -62,7 +62,7 @@ type_defs = gql(
     }
 
     type Mutation {
-        pomodoro (duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
+        pomodoro (key: String!, duration: Int!, project: String!, test: Boolean, start: Int): Pomodoro!
     }
 
     type Health {
@@ -127,48 +127,49 @@ def resolve_pomodoro(obj, info, id):
             pomo_obj.start, 'test': pomo_obj.test}
 
 @mutation.field("pomodoro")
-def mutate_pomodoro(obj, info, duration, project, test=False, start=None):
+def mutate_pomodoro(obj, info, key, duration, project, test=False, start=None):
 
-    session = Session()
+    if key == LICENSE_KEY:
+        session = Session()
 
-    # standardize project name
-    project = (project
-               .lower()
-               .replace(" ", "_")
-               .replace(".", "-"))
+        # standardize project name
+        project = (project
+                   .lower()
+                   .replace(" ", "_")
+                   .replace(".", "-"))
 
-    # look up project by name, create if doesn't exist
-    project_obj = session.query(Project).filter_by(name=project).first()
+        # look up project by name, create if doesn't exist
+        project_obj = session.query(Project).filter_by(name=project).first()
 
-    if not project_obj:
-        project_obj = Project(name=project)
+        if not project_obj:
+            project_obj = Project(name=project)
 
-    if start is None:
-        start_timestamp = int((dt.datetime.utcnow() -
-            dt.timedelta(seconds=duration)).timestamp())
-    else:
-        start_timestamp = start
+        if start is None:
+            start_timestamp = int((dt.datetime.utcnow() -
+                dt.timedelta(seconds=duration)).timestamp())
+        else:
+            start_timestamp = start
 
-    pomo = Pomodoro(duration=duration, start=start_timestamp, test=test)
-    pomo.project = project_obj
+        pomo = Pomodoro(duration=duration, start=start_timestamp, test=test)
+        pomo.project = project_obj
 
-    try:
-        session.add(pomo)
-        session.commit()
-        session.refresh(pomo)
-        pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start':
-                        pomo.start, 'test': pomo.test}
+        try:
+            session.add(pomo)
+            session.commit()
+            session.refresh(pomo)
+            pomo_details = {'id': pomo.id, 'duration': pomo.duration, 'start':
+                            pomo.start, 'test': pomo.test}
 
-        project_obj.last_touched = pomo.start
-        session.commit()
+            project_obj.last_touched = pomo.start
+            session.commit()
 
-    except Exception as e:
-        session.rollback()  # Rollback the transaction in case of an exception
-        raise e
-    finally:
-        session.close()  # Close the session to cleanup the resources
+        except Exception as e:
+            session.rollback()  # Rollback the transaction in case of an exception
+            raise e
+        finally:
+            session.close()  # Close the session to cleanup the resources
 
-    return pomo_details
+        return pomo_details
 
 @query.field("projects")
 def resolve_projects(obj, info, start_time=None, end_time=None):
