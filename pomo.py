@@ -23,8 +23,8 @@ parser.add_argument(
 
 parser.add_argument(
     '-d', '--duration',
-    help="Duration in minutes. Defaults to 30m.",
-    default="30m",
+    help="Duration in minutes. Defaults to 25m.",
+    default="25m",
     required=False)
 
 parser.add_argument(
